@@ -234,6 +234,7 @@ class Encoder(nn.Module):
     def forward(self, x):
         if self.pooling is not None:
             x = self.pooling(x)
+            # print("237",x.shape)
         x = self.basic_module(x)
 
 

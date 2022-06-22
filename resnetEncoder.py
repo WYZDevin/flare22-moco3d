@@ -31,5 +31,6 @@ class resnetEncoder(nn.Module):
         x = self.avgpool(x)
         x = torch.flatten(x, 1)
         x = self.fc(x)
+        #这里出bug就是fc的层数不对，比如说输入是(128，128，128)，fc输出层数就要为 8192， （64，128，128）fc输出层数就要为 4096，就是(shape[0]/16)*1024
         return  x
         return  torch.tensor(encoders_features)

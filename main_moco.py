@@ -159,28 +159,35 @@ def main():
 
 def validate(train_loader, model, optimizer, scaler, summary_writer, epoch, args):
     # residualUNet3D = ResidualUNet3D()
+    # return 0
     #TODO: 把model.base_encoder的weight 读进到residualUNet3D的encoders里面
     val_label_path = '/home/dd/flare2022/data/FLARE22_LabeledCase50/label/'
     val_ct_path = '/home/dd/flare2022/data/FLARE22_LabeledCase50/images/'
+
+    val_label_path = os.path.join("/home/dd/flare2022/data","FLARE22_LabeledCase50","images")+os.sep
+    val_ct_path = os.path.join("/home/dd/flare2022/data","FLARE22_LabeledCase50","labels")+os.sep
     torch.cuda.set_device(args.gpu)
     val_model = get_model()
     val_model.cuda(args.gpu)
-    # val_model.encoders = model.base_encoder.encoders
+    val_model.encoders = model.base_encoder.encoders
     val_ds = flare_loader.CustomValidImageDataset([val_ct_path + i for i in os.listdir(val_ct_path)],
                                                  [val_label_path + i for i in os.listdir(val_label_path)], 
-                                                 tio.transforms.Compose([tio.Resize(target_shape=(50, 128, 128))]),
-                                                 tio.transforms.Compose([tio.Resize(target_shape=(50, 128, 128))]))
+                                                 tio.transforms.Compose([tio.Resize(target_shape=(64, 128, 128))]),
+                                                 tio.transforms.Compose([tio.Resize(target_shape=(64, 128, 128))]))
     val_loader = torch.utils.data.DataLoader(
         val_ds, batch_size=1, 
         num_workers=args.workers, pin_memory=True)
     val_model.eval()
+    losses = AverageMeter("val_loss", ':.4e')
+    dice_coefficients = AverageMeter("dice", ':.4e')
     for batch_idx, (data, target) in enumerate(val_loader):
-        print("="*10, "VAL", data.shape, target.shape)
         data, target = data.cuda(args.gpu), target.cuda(args.gpu)
         with torch.no_grad():
             with torch.cuda.amp.autocast(True):
                 pred = val_model(data)
-        print("=" * 10,"pred", pred.shape)
+                pred = torch.argmax(pred, 1)
+                dice_coefficients.update(flare_loader.compute_dice_coefficient(pred.cpu().numpy().astype(int), target.cpu().numpy()), 1)
+    print("DICE:", dice_coefficients)
     print("validate")
     return 1
     pass
@@ -312,7 +319,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # TODO: FLARE22: Here I use dummy augmentation to test the code, please replace the above one with TorchIO implementation
     temp_augmentation1 = [
-        tio.Resize(target_shape=(50, 128, 128)),
+        tio.Resize(target_shape=(64, 128, 128)),
         tio.transforms.RandomBlur(),
         tio.RandomFlip(),
         tio.RandomSwap(),
@@ -330,9 +337,6 @@ def main_worker(gpu, ngpus_per_node, args):
     train_loader = torch.utils.data.DataLoader(
         train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
         num_workers=args.workers, pin_memory=True, sampler=train_sampler, drop_last=True)
-    for idx, (images) in train_loader:
-        print("=" * 10, images[0].shape)
-        break
     valid_metrics = 0
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
@@ -353,7 +357,7 @@ def main_worker(gpu, ngpus_per_node, args):
                     'optimizer' : optimizer.state_dict(),
                     'scaler': scaler.state_dict(),
                 }, is_best=False, filename='checkpoint_%04d.pth.tar' % epoch)
-
+    f
     if args.rank == 0:
         summary_writer.close()
 
@@ -373,7 +377,7 @@ def train(train_loader, model, optimizer, scaler, summary_writer, epoch, args):
     end = time.time()
     iters_per_epoch = len(train_loader)
     moco_m = args.moco_m
-    print("=" * 10, "training")
+    # print("=" * 10, "training")
     for i, (images) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)

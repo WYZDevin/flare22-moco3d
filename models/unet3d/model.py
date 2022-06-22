@@ -77,7 +77,7 @@ class Abstract3DUNet(nn.Module):
         # remove the last encoder's output from the list
         # !!remember: it's the 1st in the list
         encoders_features = encoders_features[1:]
-        print([i.shape for i in encoders_features])
+        # print([i.shape for i in encoders_features])
         # decoder part
         for decoder, encoder_features in zip(self.decoders, encoders_features):
             # pass the output from the corresponding encoder and the output
@@ -176,8 +176,8 @@ if __name__ == "__main__":
     # x = torch.Tensor(1,1 , 16 , 512, 512)
     # x.to(device)
     # print("x size: {}".format(x.size()))
-    model = ResidualUNet3D(in_channels=1,out_channels=outputChannel,final_sigmoid=False,num_levels=3,f_maps=40,layer_order='bcr')
-    summary(model.to(device),(1,256 , 128, 128))
+    model = ResidualUNet3D(in_channels=1,num_classes=outputChannel,final_sigmoid=False,num_levels=3,f_maps=40,layer_order='bcr')
+    summary(model,(1,50 , 128, 128))
 
     # out = model(x)
     # print("out size: {}".format(out.size()))
